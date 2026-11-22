@@ -1,1 +1,168 @@
 
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KinoUZ — Мир кино</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#090d18;color:#fff;font-family:Arial,sans-serif}
+header{background:#111827;padding:20px;text-align:center;border-bottom:1px solid #263247}
+.logo{font-size:32px;font-weight:900;color:#ff3434}
+.logo span{color:white}
+header p{color:#9ca3af;margin:6px 0}
+.container{max-width:1100px;margin:auto;padding:20px}
+.hero{text-align:center;padding:30px 10px}
+.hero h1{font-size:30px;margin-bottom:10px}
+.hero p{color:#9ca3af}
+.search{display:flex;gap:8px;max-width:650px;margin:25px auto}
+.search input{flex:1;min-width:0;padding:16px;border:1px solid #35415a;border-radius:10px;background:#182235;color:white;font-size:16px;outline:none}
+button{border:0;border-radius:10px;background:#ed2929;color:white;padding:14px 20px;font-weight:bold;font-size:15px;cursor:pointer}
+button:active{transform:scale(.97)}
+.categories{display:flex;gap:9px;overflow-x:auto;padding:12px 0}
+.categories button{white-space:nowrap;background:#202b40}
+.categories button.active{background:#ed2929}
+h2{font-size:22px;margin-top:28px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:17px}
+.movie{background:#151f31;border-radius:12px;overflow:hidden;cursor:pointer;transition:.2s}
+.movie:hover{transform:translateY(-4px)}
+.movie img{width:100%;height:220px;object-fit:cover;background:#263247}
+.movie h3{font-size:14px;padding:0 10px;margin:10px 0 5px}
+.movie p{font-size:12px;color:#9ca3af;padding:0 10px 10px;margin:0}
+#message{text-align:center;color:#aab4c5;padding:25px}
+footer{text-align:center;padding:30px;color:#7c879b;border-top:1px solid #263247;margin-top:40px}
+.modal{display:none;position:fixed;inset:0;background:#000d;z-index:5;overflow:auto;padding:25px}
+.modal-box{max-width:600px;margin:30px auto;background:#182235;padding:22px;border-radius:15px}
+.modal-box img{width:150px;max-height:220px;object-fit:cover;float:left;margin:0 18px 12px 0}
+.close{float:right;background:#374151}
+@media(max-width:500px){.search{flex-direction:column}.search button{width:100%}.hero h1{font-size:25px}.grid{grid-template-columns:repeat(2,1fr)}.movie img{height:230px}}
+</style>
+</head>
+<body>
+<header>
+<div class="logo">KINO<span>UZ</span></div>
+<p>Твой мир кино начинается здесь</p>
+</header>
+
+<main class="container">
+<section class="hero">
+<h1>Найди свой любимый фильм</h1>
+<p>Тысячи фильмов и сериалов в одном месте</p>
+<div class="search">
+<input id="searchInput" type="search" placeholder="Название фильма...">
+<button id="searchButton">Найти фильм</button>
+</div>
+</section>
+
+<div class="categories">
+<button class="active" data-query="popular">Популярные</button>
+<button data-query="28">Боевики</button>
+<button data-query="35">Комедии</button>
+<button data-query="18">Драмы</button>
+<button data-query="27">Ужасы</button>
+<button data-query="878">Фантастика</button>
+<button data-query="10749">Мелодрамы</button>
+</div>
+
+<h2 id="sectionTitle">Популярные фильмы</h2>
+<div id="message">Загружаем фильмы...</div>
+<div class="grid" id="movies"></div>
+</main>
+
+<div class="modal" id="modal">
+<div class="modal-box">
+<button class="close" id="closeModal">Закрыть ✕</button>
+<div id="details"></div>
+</div>
+</div>
+
+<footer>KinoUZ © 2026 | Мир кино</footer>
+
+<script>
+const API="https://api.themoviedb.org/3";
+const IMG="https://image.tmdb.org/t/p/w500";
+const movies=document.getElementById("movies");
+const message=document.getElementById("message");
+const input=document.getElementById("searchInput");
+const title=document.getElementById("sectionTitle");
+
+async function loadMovies(query="popular",search=false){
+ movies.innerHTML="";
+ message.style.display="block";
+ message.textContent="Загружаем фильмы...";
+ try{
+ let url=search
+ ?API+"/search/movie?api_key=YOUR_TMDB_API_KEY&language=ru-RU&query="+encodeURIComponent(query)
+ :API+"/discover/movie?api_key=YOUR_TMDB_API_KEY&language=ru-RU&sort_by=popularity.desc&page=1"+(query!=="popular"?"&with_genres="+query:"");
+ const response=await fetch(url);
+ const data=await response.json();
+ if(!response.ok)throw new Error(data.status_message||"Ошибка загрузки");
+ movies.innerHTML="";
+ if(!data.results||!data.results.length){
+ message.textContent="Фильмы не найдены.";
+ return;
+ }
+ message.style.display="none";
+ data.results.forEach(movie=>{
+ const card=document.createElement("div");
+ card.className="movie";
+ const poster=movie.poster_path?IMG+movie.poster_path:"https://placehold.co/300x450/182235/ffffff?text=KinoUZ";
+ card.innerHTML=`<img src="${poster}" alt=""><h3></h3><p>${movie.release_date||"Год неизвестен"} ★ ${movie.vote_average||"—"}</p>`;
+ card.querySelector("h3").textContent=movie.title;
+ card.onclick=()=>showDetails(movie.id);
+ movies.appendChild(card);
+ });
+ }catch(e){
+ message.textContent="Не удалось загрузить фильмы. Проверь интернет и настройку API.";
+ }
+}
+
+async function showDetails(id){
+ const modal=document.getElementById("modal");
+ const details=document.getElementById("details");
+ modal.style.display="block";
+ details.innerHTML="Загружаем информацию...";
+ try{
+ const r=await fetch(`${API}/movie/${id}?api_key=YOUR_TMDB_API_KEY&language=ru-RU`);
+ const m=await r.json();
+ details.innerHTML="";
+ const img=document.createElement("img");
+ img.src=m.poster_path?IMG+m.poster_path:"https://placehold.co/300x450";
+ const h=document.createElement("h2");
+ h.textContent=m.title;
+ const p=document.createElement("p");
+ p.textContent=m.overview||"Описание отсутствует.";
+ const year=document.createElement("p");
+ year.textContent="Дата выхода: "+(m.release_date||"неизвестно");
+ details.append(img,h,year,p);
+ }catch(e){details.textContent="Не удалось загрузить информацию."}
+}
+
+document.getElementById("searchButton").onclick=()=>{
+ const q=input.value.trim();
+ if(!q){input.focus();message.textContent="Введите название фильма.";return;}
+ title.textContent="Результаты поиска: "+q;
+ loadMovies(q,true);
+};
+input.addEventListener("keydown",e=>{
+ if(e.key==="Enter")document.getElementById("searchButton").click();
+});
+document.querySelectorAll(".categories button").forEach(btn=>{
+ btn.onclick=()=>{
+ document.querySelectorAll(".categories button").forEach(b=>b.classList.remove("active"));
+ btn.classList.add("active");
+ const q=btn.dataset.query;
+ title.textContent=btn.textContent;
+ loadMovies(q,false);
+ };
+});
+document.getElementById("closeModal").onclick=()=>document.getElementById("modal").style.display="none";
+document.getElementById("modal").onclick=e=>{
+ if(e.target.id==="modal")e.currentTarget.style.display="none";
+};
+loadMovies();
+</script>
+</body>
+</html>
